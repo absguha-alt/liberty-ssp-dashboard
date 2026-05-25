@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liberty SSP Readiness | Dynamic Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0B1F3F;
+            --primary-light: #0D2D57;
+            --primary-dark: #050F2A;
+            --accent-orange: #ff8c42;
+            --accent-teal: #1abc9c;
+            --accent-green: #00A86B;
+            --accent-yellow: #f39c12;
+            --light: #f8f9fb;
+            --lighter: #e8ecf3;
+            --border: #d4dce8;
+            --text: #1a1a2e;
+            --text-muted: #5a6678;
+            --shadow: 0 10px 40px rgba(11, 31, 63, 0.15);
+            --shadow-lg: 0 20px 60px rgba(11, 31, 63, 0.25);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #f0f4f9 0%, #e8ecf3 100%);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 24px;
+            letter-spacing: 0.3px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* ===== CONTROL BAR ===== */
+        .control-bar {
+            background: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            position: sticky;
+            top: 24px;
+            z-index: 100;
+        }
+
+        .mode-toggle {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 61, 130, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 61, 130, 0.35);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--text);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, #0a9370 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(26, 188, 156, 0.3);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+            font-size: 12px;
+            padding: 8px 16px;
+        }
+
+        .btn-export {
+            background: var(--accent-orange);
+            color: white;
+        }
+
+        .export-import {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* ===== ADMIN PANEL ===== */
+        .admin-panel {
+            display: none;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .admin-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-orange) 100%);
+            border-radius: 2px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text);
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(11, 31, 63, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .table-edit {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .table-edit th {
+            background: linear-gradient(135deg, rgba(11, 31, 63, 0.05) 0%, rgba(13, 45, 87, 0.05) 100%);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text);
+            border-bottom: 2px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table-edit td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-edit input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .table-edit select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        /* ===== DASHBOARD VIEW ===== */
+        .dashboard-view {
+            display: block;
+        }
+
+        .dashboard-view.hidden {
+            display: none;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: linear-gradient(135deg, #0B1F3F 0%, #0D2D57 50%, #0B1F3F 100%);
+            color: white;
+            padding: 60px 48px;
+            border-radius: 24px;
+            margin-bottom: 48px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 40px;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255, 140, 66, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -80px;
+            left: -80px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(26, 188, 156, 0.05) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 10s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-30px); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+            flex: 1;
+        }
+
+        .header-logo-group {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .liberty-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        }
+
+        .header-title h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            letter-spacing: -0.5px;
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            opacity: 0.75;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+        }
+
+        .header-title p {
+            font-size: 13px;
+            opacity: 0.85;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.3px;
+        }
+
+        .header-badge {
+            background: linear-gradient(135deg, #ff8c42 0%, #ff7722 100%);
+            padding: 16px 28px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid rgba(255, 140, 66, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 8px 24px rgba(255, 140, 66, 0.3);
+        }
+
+        /* ===== KPI CARDS ===== */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .kpi-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(212, 220, 232, 0.5);
+            position: relative;
+            overflow: hidden;
+            border-left: 5px solid;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-light);
+        }
+
+        .kpi-card.members { border-left-color: var(--primary); }
+        .kpi-card.advisers { border-left-color: var(--accent-teal); }
+        .kpi-card.remediation { border-left-color: var(--accent-orange); }
+        .kpi-card.employer { border-left-color: var(--primary-light); }
+
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            gap: 16px;
+        }
+
+        .kpi-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            text-transform: uppercase;
+        }
+
+        .kpi-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            white-space: nowrap;
+            background: rgba(243, 156, 18, 0.15);
+            color: #c27a0e;
+        }
+
+        .kpi-value {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 12px 0;
+            letter-spacing: -1px;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 700;
+        }
+
+        /* ===== CARD GENERIC ===== */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(212, 220, 232, 0.5);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-light);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.3px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-orange) 100%);
+            border-radius: 2px;
+        }
+
+        /* ===== CHART ===== */
+        .chart-container {
+            position: relative;
+            height: 380px;
+            margin-bottom: 16px;
+        }
+
+        /* ===== TABLES ===== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th {
+            background: linear-gradient(135deg, rgba(11, 31, 63, 0.05) 0%, rgba(13, 45, 87, 0.05) 100%);
+            padding: 16px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        table tr:last-child td {
+            border-bottom: none;
+        }
+
+        table tr:hover {
+            background: linear-gradient(135deg, rgba(11, 31, 63, 0.02) 0%, rgba(13, 45, 87, 0.02) 100%);
+        }
+
+        .metric-value {
+            text-align: right;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ===== TIMELINE ===== */
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        }
+
+        .timeline-item {
+            background: linear-gradient(135deg, rgba(0, 61, 122, 0.05) 0%, rgba(0, 85, 184, 0.05) 100%);
+            border-left: 4px solid var(--border);
+            padding: 16px;
+            border-radius: 8px;
+            transition: all 0.4s ease;
+        }
+
+        .timeline-item.active {
+            border-left-color: var(--accent-teal);
+            background: linear-gradient(135deg, rgba(26, 188, 156, 0.08) 0%, rgba(26, 188, 156, 0.04) 100%);
+        }
+
+        .timeline-item.pending {
+            border-left-color: var(--accent-orange);
+        }
+
+        .timeline-month {
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .timeline-desc {
+            color: var(--text-muted);
+            line-height: 1.5;
+            font-size: 12px;
+        }
+
+        /* ===== ACTION TABLE ===== */
+        .action-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .action-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .action-table th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 16px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .action-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .action-label {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            white-space: nowrap;
+        }
+
+        .badge-completed {
+            background: rgba(26, 188, 156, 0.15);
+            color: #0a9370;
+        }
+
+        .badge-progress {
+            background: rgba(243, 156, 18, 0.15);
+            color: #c27a0e;
+        }
+
+        .badge-pending {
+            background: rgba(212, 220, 232, 0.5);
+            color: var(--text-muted);
+        }
+
+        .badge-target {
+            background: rgba(255, 140, 66, 0.15);
+            color: #d17331;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            text-align: center;
+            padding: 32px 0;
+            border-top: 2px solid var(--border);
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 48px;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1200px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .timeline-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .header { flex-direction: column; }
+            .kpi-grid { grid-template-columns: 1fr; }
+            .timeline-grid { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .control-bar { flex-direction: column; gap: 16px; }
+        }
+
+        .success-message {
+            background: #D1FAE5;
+            color: #047857;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- CONTROL BAR -->
+        <div class="control-bar">
+            <div class="mode-toggle">
+                <button class="btn btn-primary" id="viewBtn" onclick="switchMode('view')">📊 VIEW DASHBOARD</button>
+                <button class="btn btn-secondary" id="editBtn" onclick="switchMode('edit')">✏️ EDIT DATA</button>
+            </div>
+            <div class="export-import">
+                <button class="btn btn-export" onclick="exportData()">📥 EXPORT</button>
+                <button class="btn btn-export" onclick="importData()">📤 IMPORT</button>
+            </div>
+        </div>
+
+        <div id="successMessage" class="success-message">✓ Data saved successfully!</div>
+
+        <!-- ===== DASHBOARD VIEW ===== -->
+        <div id="dashboardView" class="dashboard-view">
+            <!-- HEADER -->
+            <div class="header">
+                <div class="header-content">
+                    <div class="header-logo-group">
+                        <div class="liberty-logo"><img src="data:image/jpeg;base64,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" alt="Liberty" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/></div>
+                        <div class="header-title">
+                            <div class="header-subtitle">Liberty</div>
+                            <h1>SSP Readiness</h1>
+                            <p>#InitWithYou • Self-Service Portal Initiative</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-badge">
+                    📊 LIVE DASHBOARD<br>CRITICAL MANDATE: All New Schemes & Business SSP-Ready by 01 JAN 2027
+                </div>
+            </div>
+
+            <!-- KPI CARDS -->
+            <div class="kpi-grid">
+                <div class="kpi-card members">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Members Target</span>
+                        <span class="kpi-badge">TARGET</span>
+                    </div>
+                    <div class="kpi-value" id="displayMembersTarget">75K</div>
+                    <div class="kpi-label">Total Population • May-Oct 2024</div>
+                </div>
+
+                <div class="kpi-card advisers">
+                    <div class="kpi-header">
+                        <span class="kpi-title">FA Target</span>
+                        <span class="kpi-badge">TARGET</span>
+                    </div>
+                    <div class="kpi-value" id="displayFATarget">230</div>
+                    <div class="kpi-label">Financial Advisers • May-Oct 2024</div>
+                </div>
+
+                <div class="kpi-card remediation">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Employers Target</span>
+                        <span class="kpi-badge">TARGET</span>
+                    </div>
+                    <div class="kpi-value" id="displayEmployersTarget">3K</div>
+                    <div class="kpi-label">Employer Programs • May-Oct 2024</div>
+                </div>
+
+                <div class="kpi-card employer">
+                    <div class="kpi-header">
+                        <span class="kpi-title">EXCO Mandate</span>
+                        <span class="kpi-badge">TARGET</span>
+                    </div>
+                    <div class="kpi-value" id="displayExcoTarget">100%</div>
+                    <div class="kpi-label">SSP Ready by Jan 1, 2027</div>
+                </div>
+            </div>
+
+            <!-- PROJECTION CHART -->
+            <div class="card">
+                <div class="card-title">Monthly Onboarding Projections & Targets (Combined View)</div>
+                <div class="chart-container">
+                    <canvas id="projectionsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- INDIVIDUAL CATEGORY CHARTS -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 48px;">
+                <!-- MEMBERS CHART -->
+                <div class="card">
+                    <div class="card-title">Members Onboarding Progression</div>
+                    <div class="chart-container">
+                        <canvas id="membersChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- FA CHART -->
+                <div class="card">
+                    <div class="card-title">Financial Adviser Onboarding Progression</div>
+                    <div class="chart-container">
+                        <canvas id="faChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- EMPLOYERS CHART -->
+                <div class="card">
+                    <div class="card-title">Employer Onboarding Progression</div>
+                    <div class="chart-container">
+                        <canvas id="employersChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- METRICS TABLES -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 48px;">
+                <!-- MEMBERS TABLE -->
+                <div class="card" style="grid-column: 1;">
+                    <table id="membersTable">
+                        <thead>
+                            <tr>
+                                <th colspan="4" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white;">Members Onboarding Schedule (TARGET)</th>
+                            </tr>
+                            <tr style="background: linear-gradient(135deg, rgba(11, 31, 63, 0.05) 0%, rgba(13, 45, 87, 0.05) 100%);">
+                                <th>Month</th>
+                                <th style="text-align: right;">Monthly</th>
+                                <th style="text-align: right;">Cumulative</th>
+                                <th style="text-align: right;">%</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- FA TABLE -->
+                <div class="card" style="grid-column: 2;">
+                    <table id="faTable">
+                        <thead>
+                            <tr>
+                                <th colspan="4" style="background: linear-gradient(135deg, var(--accent-teal) 0%, #0a9370 100%); color: white;">Financial Adviser Onboarding Schedule (TARGET)</th>
+                            </tr>
+                            <tr style="background: linear-gradient(135deg, rgba(26, 188, 156, 0.05) 0%, rgba(26, 188, 156, 0.05) 100%);">
+                                <th>Month</th>
+                                <th style="text-align: right;">Monthly</th>
+                                <th style="text-align: right;">Cumulative</th>
+                                <th style="text-align: right;">%</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- EMPLOYERS TABLE -->
+                <div class="card" style="grid-column: 3;">
+                    <table id="employersTable">
+                        <thead>
+                            <tr>
+                                <th colspan="4" style="background: linear-gradient(135deg, var(--accent-orange) 0%, #d17331 100%); color: white;">Employer Onboarding Schedule (TARGET)</th>
+                            </tr>
+                            <tr style="background: linear-gradient(135deg, rgba(255, 140, 66, 0.05) 0%, rgba(255, 140, 66, 0.05) 100%);">
+                                <th>Month</th>
+                                <th style="text-align: right;">Monthly</th>
+                                <th style="text-align: right;">Cumulative</th>
+                                <th style="text-align: right;">%</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TIMELINE -->
+            <div class="card">
+                <div class="card-title">Readiness Initiative Timeline</div>
+                <div class="timeline-grid" id="timelineContainer"></div>
+            </div>
+
+            <!-- ACTION PLAN -->
+            <div class="card">
+                <div class="card-title">Strategic Action Plan & Roadmap</div>
+                <div class="action-table-wrapper">
+                    <table class="action-table" id="actionTable">
+                        <thead>
+                            <tr>
+                                <th>Phase</th>
+                                <th>Initiative</th>
+                                <th>Target Date</th>
+                                <th>Owner</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="footer">
+                Liberty Financial Group | SSP Readiness Initiative | Standard Bank Group | #InItWithYou<br>
+                Last Updated: <span id="lastUpdated">Today</span> | Enterprise Dashboard
+            </div>
+        </div>
+
+        <!-- ===== ADMIN PANEL ===== -->
+        <div id="adminPanel" class="admin-panel">
+            <div id="successMessage2" class="success-message"></div>
+
+            <!-- KPI TARGETS -->
+            <div class="admin-section">
+                <div class="section-title">KPI Targets</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Members Population Target</label>
+                        <input type="text" id="kpiMembers" value="75K">
+                    </div>
+                    <div class="form-group">
+                        <label>Financial Advisers Target</label>
+                        <input type="text" id="kpiFA" value="230">
+                    </div>
+                    <div class="form-group">
+                        <label>Employers Target</label>
+                        <input type="text" id="kpiEmployers" value="3K">
+                    </div>
+                    <div class="form-group">
+                        <label>EXCO Mandate (%)</label>
+                        <input type="text" id="kpiExco" value="100%">
+                    </div>
+                </div>
+            </div>
+
+            <!-- MEMBERS MONTHLY DATA -->
+            <div class="admin-section">
+                <div class="section-title">Members Monthly Targets</div>
+                <table class="table-edit">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Monthly Target</th>
+                        </tr>
+                    </thead>
+                    <tbody id="membersMonthlyTable"></tbody>
+                </table>
+            </div>
+
+            <!-- FA MONTHLY DATA -->
+            <div class="admin-section">
+                <div class="section-title">Financial Adviser Monthly Targets</div>
+                <table class="table-edit">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Monthly Target</th>
+                        </tr>
+                    </thead>
+                    <tbody id="faMonthlyTable"></tbody>
+                </table>
+            </div>
+
+            <!-- EMPLOYERS MONTHLY DATA -->
+            <div class="admin-section">
+                <div class="section-title">Employer Monthly Targets</div>
+                <table class="table-edit">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Monthly Target</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employersMonthlyTable"></tbody>
+                </table>
+            </div>
+
+            <!-- TIMELINE -->
+            <div class="admin-section">
+                <div class="section-title">Timeline Milestones</div>
+                <table class="table-edit">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timelineTable"></tbody>
+                </table>
+            </div>
+
+            <!-- ACTION PLAN -->
+            <div class="admin-section">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <div class="section-title" style="margin-bottom:0;">Action Plan Items</div>
+                    <button onclick="addActionRow()" style="display:flex;align-items:center;gap:6px;padding:8px 18px;background:linear-gradient(135deg,#0B1F3F,#0D2D57);color:white;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;letter-spacing:0.4px;transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <span style="font-size:18px;line-height:1;">+</span> Add Row
+                    </button>
+                </div>
+                <table class="table-edit">
+                    <thead>
+                        <tr>
+                            <th>Phase</th>
+                            <th>Initiative</th>
+                            <th>Target Date</th>
+                            <th>Owner</th>
+                            <th>Status</th>
+                            <th style="width:40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="actionPlanTable"></tbody>
+                </table>
+            </div>
+
+            <!-- SAVE BUTTON -->
+            <div style="text-align: center; margin: 40px 0;">
+                <button class="btn btn-success" onclick="saveAllData()" style="padding: 16px 48px; font-size: 16px;">💾 SAVE ALL CHANGES</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIDDEN FILE INPUT FOR IMPORT -->
+    <input type="file" id="fileInput" style="display: none;" accept=".json">
+
+    <script>
+        // ===== DEFAULT DATA =====
+        const defaultData = {
+            kpi: {
+                members: '75K',
+                fa: '230',
+                employers: '3K',
+                exco: '100%'
+            },
+            membersMonthly: [
+                { month: 'May', value: '24K' },
+                { month: 'June', value: '8.5K' },
+                { month: 'July', value: '8.5K' },
+                { month: 'August', value: '8.5K' },
+                { month: 'September', value: '8.5K' },
+                { month: 'October', value: '8.5K' }
+            ],
+            faMonthly: [
+                { month: 'May', value: '120' },
+                { month: 'June', value: '18.5' },
+                { month: 'July', value: '18.5' },
+                { month: 'August', value: '18.5' },
+                { month: 'September', value: '18.5' },
+                { month: 'October', value: '18.5' }
+            ],
+            employersMonthly: [
+                { month: 'May', value: '0' },
+                { month: 'June', value: '330' },
+                { month: 'July', value: '445' },
+                { month: 'August', value: '445' },
+                { month: 'September', value: '445' },
+                { month: 'October', value: '445' }
+            ],
+            timeline: [
+                { month: 'May 2024', desc: 'FA Workshop Series (8 prep sessions) • Members: 24K target' },
+                { month: 'June 2024', desc: 'MI Count & Measure • Members: 8.5K • Employers: 330' },
+                { month: 'July 2024', desc: 'Data Remediation Forms • Members: 8.5K • Employers: 445' },
+                { month: 'Aug-Oct 2024', desc: 'Continuous Onboarding • Members: 8.5K/mo • Employers: 445/mo' },
+                { month: 'Jan 1, 2027', desc: 'EXCO Mandate: 100% SSP Ready' }
+            ],
+            actionPlan: [
+                { phase: '1', initiative: 'FA Workshop Series (PVA-MS)', date: '22/05/2024', owner: 'Slangs Facilitators', status: 'COMPLETED' },
+                { phase: '2a', initiative: 'Define the Data Remediation Form', date: 'TBD', owner: 'Operations / MI Team', status: 'COMPLETED' },
+                { phase: '2b', initiative: 'Sign-off Data Remediation Form', date: 'TBD', owner: 'EXCO / Leadership', status: 'COMPLETED' },
+                { phase: '2c', initiative: 'Execute Proof of Concept for Data Remediation Form', date: 'April 2026', owner: 'MI Team', status: 'COMPLETED' },
+                { phase: '3a', initiative: 'Send Target Communication to All Employers', date: 'May 2026', owner: 'Employer Relations', status: 'IN PROGRESS' },
+                { phase: '3b', initiative: '330 Employer Forms Received to Date (Milestone)', date: '05/06/2024', owner: 'Employer Relations', status: 'ACHIEVED' },
+                { phase: '3c', initiative: 'Send Reminder E-mails with SSP Tool Kit', date: '01/06/2024', owner: 'Communications / Operations', status: 'IN PROGRESS' },
+                { phase: '3d', initiative: 'Data Capture of Information', date: 'Before September 2026', owner: 'MI Team / Operations', status: 'IN PROGRESS' },
+                { phase: '4a', initiative: 'Run 3 Demo Registration Sessions (Selected Employers - Each Tier)', date: 'Mid June 2024', owner: 'Employer Relations / Operations', status: 'PENDING' },
+                { phase: '4b', initiative: 'Intended Action: Increase Member Registration', date: 'Post-Demo', owner: 'All Teams', status: 'PENDING' },
+                { phase: '5a', initiative: 'Engage Relevant Financial Advisers (Per Employer Data Remediation)', date: 'Ongoing / Post-Remediation', owner: 'Distribution Support Team / FA Coordinators', status: 'PENDING' },
+                { phase: '5b', initiative: 'FA-Distribution Team Discussion & Planning', date: 'Ongoing', owner: 'Distribution Support / FA Leadership', status: 'PENDING' },
+                { phase: '6', initiative: '100% SSP Readiness Achieved', date: '01/01/2027', owner: 'EXCO / Leadership / All Teams', status: 'TARGET' }
+            ]
+        };
+
+        // ===== INITIALIZE =====
+        function init() {
+            loadData();
+            renderDashboard();
+            renderAdminPanel();
+            document.getElementById('viewBtn').click();
+        }
+
+        // ===== LOCAL STORAGE =====
+        function loadData() {
+            const stored = localStorage.getItem('libertyDashboard');
+            if (!stored) {
+                window.dashboardData = JSON.parse(JSON.stringify(defaultData));
+                saveToStorage();
+            } else {
+                window.dashboardData = JSON.parse(stored);
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('libertyDashboard', JSON.stringify(window.dashboardData));
+        }
+
+        // ===== SWITCH MODE =====
+        function switchMode(mode) {
+            const dashboard = document.getElementById('dashboardView');
+            const admin = document.getElementById('adminPanel');
+            const viewBtn = document.getElementById('viewBtn');
+            const editBtn = document.getElementById('editBtn');
+
+            if (mode === 'view') {
+                dashboard.classList.remove('hidden');
+                admin.classList.remove('active');
+                viewBtn.classList.add('btn-primary');
+                viewBtn.classList.remove('btn-secondary');
+                editBtn.classList.remove('btn-primary');
+                editBtn.classList.add('btn-secondary');
+                renderDashboard();
+            } else {
+                dashboard.classList.add('hidden');
+                admin.classList.add('active');
+                viewBtn.classList.remove('btn-primary');
+                viewBtn.classList.add('btn-secondary');
+                editBtn.classList.add('btn-primary');
+                editBtn.classList.remove('btn-secondary');
+            }
+        }
+
+        // ===== RENDER DASHBOARD =====
+        function renderDashboard() {
+            const data = window.dashboardData;
+
+            // Update KPI values
+            document.getElementById('displayMembersTarget').textContent = data.kpi.members;
+            document.getElementById('displayFATarget').textContent = data.kpi.fa;
+            document.getElementById('displayEmployersTarget').textContent = data.kpi.employers;
+            document.getElementById('displayExcoTarget').textContent = data.kpi.exco;
+
+            // Update tables
+            updateMembersTable();
+            updateFATable();
+            updateEmployersTable();
+            updateTimeline();
+            updateActionPlan();
+            updateChart();
+            updateLastUpdated();
+        }
+
+        function updateMembersTable() {
+            const tbody = document.querySelector('#membersTable tbody');
+            tbody.innerHTML = '';
+            let cumulative = 0;
+            const total = 75;
+
+            window.dashboardData.membersMonthly.forEach(item => {
+                const monthValue = parseFloat(item.value);
+                cumulative += monthValue;
+                const percent = Math.round((cumulative / total) * 100);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.month}</td>
+                    <td style="text-align: right;"><strong>${item.value}</strong></td>
+                    <td style="text-align: right;"><strong>${cumulative.toFixed(1)}K</strong></td>
+                    <td class="metric-value">${percent}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateFATable() {
+            const tbody = document.querySelector('#faTable tbody');
+            tbody.innerHTML = '';
+            let cumulative = 0;
+            const total = 230;
+
+            window.dashboardData.faMonthly.forEach(item => {
+                const monthValue = parseFloat(item.value);
+                cumulative += monthValue;
+                const percent = Math.round((cumulative / total) * 100);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.month}</td>
+                    <td style="text-align: right;"><strong>${item.value}</strong></td>
+                    <td style="text-align: right;"><strong>${cumulative.toFixed(1)}</strong></td>
+                    <td class="metric-value">${percent}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateEmployersTable() {
+            const tbody = document.querySelector('#employersTable tbody');
+            tbody.innerHTML = '';
+            let cumulative = 0;
+            const total = 3000;
+
+            window.dashboardData.employersMonthly.forEach(item => {
+                const monthValue = parseFloat(item.value);
+                cumulative += monthValue;
+                const percent = Math.round((cumulative / total) * 100);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.month}</td>
+                    <td style="text-align: right;"><strong>${item.value}</strong></td>
+                    <td style="text-align: right;"><strong>${cumulative.toLocaleString()}</strong></td>
+                    <td class="metric-value">${percent}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateTimeline() {
+            const container = document.getElementById('timelineContainer');
+            container.innerHTML = '';
+
+            window.dashboardData.timeline.forEach((item, index) => {
+                const isActive = index < 3 || index === window.dashboardData.timeline.length - 2;
+                const isPending = index >= 3;
+
+                const div = document.createElement('div');
+                div.className = `timeline-item ${isActive ? 'active' : isPending ? 'pending' : ''}`;
+                div.innerHTML = `
+                    <div class="timeline-month">${item.month}</div>
+                    <div class="timeline-desc">${item.desc}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateActionPlan() {
+            const tbody = document.querySelector('#actionTable tbody');
+            tbody.innerHTML = '';
+
+            window.dashboardData.actionPlan.forEach(item => {
+                const badgeClass = item.status === 'COMPLETED' ? 'badge-completed' : 
+                                   item.status === 'ACHIEVED' ? 'badge-completed' :
+                                   item.status === 'IN PROGRESS' ? 'badge-progress' :
+                                   item.status === 'TARGET' ? 'badge-target' : 'badge-pending';
+                
+                const statusSymbol = item.status === 'COMPLETED' ? '✓' :
+                                    item.status === 'ACHIEVED' ? '✓' :
+                                    item.status === 'IN PROGRESS' ? '⚡' :
+                                    item.status === 'TARGET' ? '🎯' : '⏳';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.phase}</td>
+                    <td class="action-label">${item.initiative}</td>
+                    <td>${item.date}</td>
+                    <td>${item.owner}</td>
+                    <td><span class="status-badge ${badgeClass}">${statusSymbol} ${item.status}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateLastUpdated() {
+            const today = new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            document.getElementById('lastUpdated').textContent = today;
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('projectionsChart');
+            if (!ctx) return;
+
+            if (window.projectionsChartInstance) {
+                window.projectionsChartInstance.destroy();
+            }
+
+            const membersValues = window.dashboardData.membersMonthly.map(m => parseFloat(m.value));
+            const faValues = window.dashboardData.faMonthly.map(m => parseFloat(m.value));
+            const employersValues = window.dashboardData.employersMonthly.map(m => parseFloat(m.value));
+
+            window.projectionsChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: window.dashboardData.membersMonthly.map(m => m.month),
+                    datasets: [
+                        {
+                            label: 'Members TARGET (K)',
+                            data: membersValues,
+                            borderColor: '#0B1F3F',
+                            backgroundColor: 'rgba(11, 31, 63, 0.08)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 6,
+                            pointBackgroundColor: '#0B1F3F',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Financial Advisers TARGET',
+                            data: faValues,
+                            borderColor: '#1abc9c',
+                            backgroundColor: 'rgba(26, 188, 156, 0.08)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 6,
+                            pointBackgroundColor: '#1abc9c',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Employers TARGET',
+                            data: employersValues,
+                            borderColor: '#ff8c42',
+                            backgroundColor: 'rgba(255, 140, 66, 0.08)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 6,
+                            pointBackgroundColor: '#ff8c42',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y2'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { font: { size: 13, weight: 600 }, color: '#1a1a2e', padding: 20, usePointStyle: true }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Members (K)', font: { size: 12, weight: 600 }, color: '#0B1F3F' },
+                            ticks: { color: '#0B1F3F', font: { weight: 600 } },
+                            grid: { color: 'rgba(11, 31, 63, 0.08)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: 'Financial Advisers', font: { size: 12, weight: 600 }, color: '#1abc9c' },
+                            ticks: { color: '#1abc9c', font: { weight: 600 } },
+                            grid: { drawOnChartArea: false }
+                        },
+                        y2: {
+                            type: 'linear',
+                            position: 'right',
+                            offset: true,
+                            title: { display: true, text: 'Employers', font: { size: 12, weight: 600 }, color: '#ff8c42' },
+                            ticks: { color: '#ff8c42', font: { weight: 600 } },
+                            grid: { drawOnChartArea: false }
+                        },
+                        x: {
+                            ticks: { color: '#1a1a2e', font: { weight: 600 } },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        }
+                    }
+                }
+            });
+
+            // Create individual category charts
+            createMembersChart();
+            createFAChart();
+            createEmployersChart();
+        }
+
+        function createMembersChart() {
+            const ctx = document.getElementById('membersChart');
+            if (!ctx) return;
+
+            if (window.membersChartInstance) {
+                window.membersChartInstance.destroy();
+            }
+
+            const membersValues = window.dashboardData.membersMonthly.map(m => parseFloat(m.value));
+            let cumulativeMembers = [];
+            let cumulative = 0;
+            membersValues.forEach(val => {
+                cumulative += val;
+                cumulativeMembers.push(cumulative);
+            });
+
+            window.membersChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: window.dashboardData.membersMonthly.map(m => m.month),
+                    datasets: [
+                        {
+                            label: 'Monthly Onboarding',
+                            data: membersValues,
+                            borderColor: '#0B1F3F',
+                            backgroundColor: 'rgba(11, 31, 63, 0.08)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#0B1F3F',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Cumulative Progress',
+                            data: cumulativeMembers,
+                            borderColor: '#0055B8',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#0055B8',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { font: { size: 12, weight: 600 }, color: '#1a1a2e', padding: 16, usePointStyle: true }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Members (K)', font: { size: 11, weight: 600 }, color: '#0B1F3F' },
+                            ticks: { color: '#0B1F3F', font: { weight: 600, size: 11 } },
+                            grid: { color: 'rgba(11, 31, 63, 0.08)' }
+                        },
+                        x: {
+                            ticks: { color: '#1a1a2e', font: { weight: 600, size: 11 } },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createFAChart() {
+            const ctx = document.getElementById('faChart');
+            if (!ctx) return;
+
+            if (window.faChartInstance) {
+                window.faChartInstance.destroy();
+            }
+
+            const faValues = window.dashboardData.faMonthly.map(m => parseFloat(m.value));
+            let cumulativeFA = [];
+            let cumulative = 0;
+            faValues.forEach(val => {
+                cumulative += val;
+                cumulativeFA.push(cumulative);
+            });
+
+            window.faChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: window.dashboardData.faMonthly.map(m => m.month),
+                    datasets: [
+                        {
+                            label: 'Monthly Onboarding',
+                            data: faValues,
+                            borderColor: '#1abc9c',
+                            backgroundColor: 'rgba(26, 188, 156, 0.08)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#1abc9c',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Cumulative Progress',
+                            data: cumulativeFA,
+                            borderColor: '#0a9370',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#0a9370',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { font: { size: 12, weight: 600 }, color: '#1a1a2e', padding: 16, usePointStyle: true }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Financial Advisers', font: { size: 11, weight: 600 }, color: '#1abc9c' },
+                            ticks: { color: '#1abc9c', font: { weight: 600, size: 11 } },
+                            grid: { color: 'rgba(26, 188, 156, 0.08)' }
+                        },
+                        x: {
+                            ticks: { color: '#1a1a2e', font: { weight: 600, size: 11 } },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createEmployersChart() {
+            const ctx = document.getElementById('employersChart');
+            if (!ctx) return;
+
+            if (window.employersChartInstance) {
+                window.employersChartInstance.destroy();
+            }
+
+            const employersValues = window.dashboardData.employersMonthly.map(m => parseFloat(m.value));
+            let cumulativeEmployers = [];
+            let cumulative = 0;
+            employersValues.forEach(val => {
+                cumulative += val;
+                cumulativeEmployers.push(cumulative);
+            });
+
+            window.employersChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: window.dashboardData.employersMonthly.map(m => m.month),
+                    datasets: [
+                        {
+                            label: 'Monthly Onboarding',
+                            data: employersValues,
+                            borderColor: '#ff8c42',
+                            backgroundColor: 'rgba(255, 140, 66, 0.08)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#ff8c42',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Cumulative Progress',
+                            data: cumulativeEmployers,
+                            borderColor: '#d17331',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#d17331',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { font: { size: 12, weight: 600 }, color: '#1a1a2e', padding: 16, usePointStyle: true }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Employers', font: { size: 11, weight: 600 }, color: '#ff8c42' },
+                            ticks: { color: '#ff8c42', font: { weight: 600, size: 11 } },
+                            grid: { color: 'rgba(255, 140, 66, 0.08)' }
+                        },
+                        x: {
+                            ticks: { color: '#1a1a2e', font: { weight: 600, size: 11 } },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ===== RENDER ADMIN PANEL =====
+        function renderAdminPanel() {
+            const data = window.dashboardData;
+
+            // KPI inputs
+            document.getElementById('kpiMembers').value = data.kpi.members;
+            document.getElementById('kpiFA').value = data.kpi.fa;
+            document.getElementById('kpiEmployers').value = data.kpi.employers;
+            document.getElementById('kpiExco').value = data.kpi.exco;
+
+            // Monthly tables
+            renderMonthlyTable('membersMonthlyTable', data.membersMonthly);
+            renderMonthlyTable('faMonthlyTable', data.faMonthly);
+            renderMonthlyTable('employersMonthlyTable', data.employersMonthly);
+
+            // Timeline table
+            renderTimelineTable();
+
+            // Action plan table
+            renderActionPlanTable();
+        }
+
+        function renderMonthlyTable(tableId, data) {
+            const tbody = document.getElementById(tableId);
+            tbody.innerHTML = '';
+
+            data.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.month}</td>
+                    <td><input type="text" value="${item.value}" data-index="${index}"></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderTimelineTable() {
+            const tbody = document.getElementById('timelineTable');
+            tbody.innerHTML = '';
+
+            window.dashboardData.timeline.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.month}</td>
+                    <td><input type="text" value="${item.desc}" data-index="${index}" style="width: 100%;"></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderActionPlanTable() {
+            const tbody = document.getElementById('actionPlanTable');
+            tbody.innerHTML = '';
+            window.dashboardData.actionPlan.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="text" value="${item.phase}" data-index="${index}" data-field="phase"></td>
+                    <td><input type="text" value="${item.initiative}" data-index="${index}" data-field="initiative" style="width:100%;"></td>
+                    <td><input type="text" value="${item.date}" data-index="${index}" data-field="date"></td>
+                    <td><input type="text" value="${item.owner}" data-index="${index}" data-field="owner"></td>
+                    <td>
+                        <select data-index="${index}" data-field="status">
+                            <option ${item.status==='COMPLETED'?'selected':''}>COMPLETED</option>
+                            <option ${item.status==='ACHIEVED'?'selected':''}>ACHIEVED</option>
+                            <option ${item.status==='IN PROGRESS'?'selected':''}>IN PROGRESS</option>
+                            <option ${item.status==='PENDING'?'selected':''}>PENDING</option>
+                            <option ${item.status==='TARGET'?'selected':''}>TARGET</option>
+                        </select>
+                    </td>
+                    <td style="text-align:center;">
+                        <button onclick="deleteActionRow(${index})" title="Delete row" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:18px;line-height:1;padding:2px 6px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#fdecea'" onmouseout="this.style.background='none'">&#x2715;</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function addActionRow() {
+            // First flush any current edits into dashboardData
+            document.querySelectorAll('#actionPlanTable input, #actionPlanTable select').forEach(el => {
+                const idx = el.dataset.index;
+                const field = el.dataset.field;
+                if (field !== undefined && idx !== undefined) {
+                    window.dashboardData.actionPlan[idx][field] = el.value;
+                }
+            });
+            window.dashboardData.actionPlan.push({
+                phase: '',
+                initiative: '',
+                date: '',
+                owner: '',
+                status: 'PENDING'
+            });
+            renderActionPlanTable();
+        }
+
+        function deleteActionRow(index) {
+            // Flush edits first
+            document.querySelectorAll('#actionPlanTable input, #actionPlanTable select').forEach(el => {
+                const idx = parseInt(el.dataset.index);
+                const field = el.dataset.field;
+                if (field !== undefined && !isNaN(idx)) {
+                    window.dashboardData.actionPlan[idx][field] = el.value;
+                }
+            });
+            window.dashboardData.actionPlan.splice(index, 1);
+            renderActionPlanTable();
+        }
+
+        // ===== SAVE DATA =====
+        function saveAllData() {
+            const data = window.dashboardData;
+
+            // KPI
+            data.kpi.members = document.getElementById('kpiMembers').value;
+            data.kpi.fa = document.getElementById('kpiFA').value;
+            data.kpi.employers = document.getElementById('kpiEmployers').value;
+            data.kpi.exco = document.getElementById('kpiExco').value;
+
+            // Members monthly
+            document.querySelectorAll('#membersMonthlyTable input').forEach(input => {
+                const index = input.dataset.index;
+                data.membersMonthly[index].value = input.value;
+            });
+
+            // FA monthly
+            document.querySelectorAll('#faMonthlyTable input').forEach(input => {
+                const index = input.dataset.index;
+                data.faMonthly[index].value = input.value;
+            });
+
+            // Employers monthly
+            document.querySelectorAll('#employersMonthlyTable input').forEach(input => {
+                const index = input.dataset.index;
+                data.employersMonthly[index].value = input.value;
+            });
+
+            // Timeline
+            document.querySelectorAll('#timelineTable input').forEach(input => {
+                const index = input.dataset.index;
+                data.timeline[index].desc = input.value;
+            });
+
+            // Action plan — rebuild from current rows to handle additions & deletions
+            const rows = document.querySelectorAll('#actionPlanTable tr');
+            const newActionPlan = [];
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input, select');
+                if (inputs.length === 0) return;
+                const entry = {};
+                inputs.forEach(el => { if (el.dataset.field) entry[el.dataset.field] = el.value; });
+                if (Object.keys(entry).length > 0) newActionPlan.push(entry);
+            });
+            data.actionPlan = newActionPlan;
+
+            saveToStorage();
+            switchMode('view');
+            showSuccessMessage();
+        }
+
+        function showSuccessMessage() {
+            const msg = document.getElementById('successMessage');
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 3000);
+        }
+
+        // ===== EXPORT / IMPORT =====
+        function exportData() {
+            const dataStr = JSON.stringify(window.dashboardData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `liberty-ssp-data-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+
+        function importData() {
+            document.getElementById('fileInput').click();
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const imported = JSON.parse(event.target.result);
+                    window.dashboardData = imported;
+                    saveToStorage();
+                    renderDashboard();
+                    renderAdminPanel();
+                    alert('✓ Data imported successfully!');
+                } catch (err) {
+                    alert('❌ Error importing data: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // ===== INIT ON LOAD =====
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
